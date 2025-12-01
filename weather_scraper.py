@@ -10,6 +10,7 @@ import config
 from util.UnitConverter import ConvertToSystem
 from util.Parser import Parser
 from util.Utils import Utils
+from util.JsonExtractor import JsonExtractor
 
 # configuration
 stations_file = open('stations.txt', 'r')
@@ -81,6 +82,10 @@ def scrap_station(weather_station_url):
                 writer.writerows(data_to_write)
             except Exception as e:
                 print(e)
+
+    # Extract summary statistics to JSON
+    print(f'Extracting summary statistics to JSON for {station_name}')
+    JsonExtractor.extract_to_json(file_name, station_name, END_DATE)
 
 
 

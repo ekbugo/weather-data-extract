@@ -1,0 +1,19 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# CSV output files (generated data)
+*.csv
+
+# JSON output files (generated data)
+*.json
