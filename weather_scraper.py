@@ -45,6 +45,14 @@ def scrap_station(weather_station_url):
     station_name = weather_station_url.split('/')[-1]
     file_name = f'{station_name}.csv'
 
+    # Track summary statistics across all dates
+    aggregated_summary = {
+        "MaxTemp": None,
+        "MinTemp": None,
+        "MaxGust": None,
+        "SumPrec": None
+    }
+
     with open(file_name, 'a+', newline='') as csvfile:
         fieldnames = ['Date', 'Time',	'Temperature',	'Dew_Point',	'Humidity',	'Wind',	'Speed',	'Gust',	'Pressure',	'Precip_Rate',	'Precip_Accum',	'UV',   'Solar']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -71,6 +79,23 @@ def scrap_station(weather_station_url):
                         print("refreshing session")
                         session = requests.Session()
 
+                # Extract summary statistics from the page
+                daily_summary = Parser.parse_summary_table(doc)
+
+                # Aggregate summary data across all dates
+                if daily_summary["MaxTemp"] is not None:
+                    if aggregated_summary["MaxTemp"] is None or daily_summary["MaxTemp"] > aggregated_summary["MaxTemp"]:
+                        aggregated_summary["MaxTemp"] = daily_summary["MaxTemp"]
+                if daily_summary["MinTemp"] is not None:
+                    if aggregated_summary["MinTemp"] is None or daily_summary["MinTemp"] < aggregated_summary["MinTemp"]:
+                        aggregated_summary["MinTemp"] = daily_summary["MinTemp"]
+                if daily_summary["MaxGust"] is not None:
+                    if aggregated_summary["MaxGust"] is None or daily_summary["MaxGust"] > aggregated_summary["MaxGust"]:
+                        aggregated_summary["MaxGust"] = daily_summary["MaxGust"]
+                if daily_summary["SumPrec"] is not None:
+                    if aggregated_summary["SumPrec"] is None or daily_summary["SumPrec"] > aggregated_summary["SumPrec"]:
+                        aggregated_summary["SumPrec"] = daily_summary["SumPrec"]
+
                 # parse html table rows
                 data_rows = Parser.parse_html_table(date_string, history_table)
 
@@ -83,9 +108,9 @@ def scrap_station(weather_station_url):
             except Exception as e:
                 print(e)
 
-    # Extract summary statistics to JSON
-    print(f'Extracting summary statistics to JSON for {station_name}')
-    JsonExtractor.extract_to_json(file_name, station_name, END_DATE)
+    # Save aggregated summary statistics to JSON
+    print(f'Saving summary statistics to JSON for {station_name}')
+    JsonExtractor.save_summary_to_json(aggregated_summary, station_name, END_DATE)
 
 
 
