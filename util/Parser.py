@@ -25,71 +25,68 @@ class Parser:
         try:
             print("DEBUG: Searching for summary data...")
 
-            # Strategy 1: Look for elements containing the labels
-            temp_elements = doc.xpath('//span[contains(text(), "Temperature")]/ancestor::tr[1]//td')
-            print(f"DEBUG: Found {len(temp_elements)} temperature td elements (strategy 1)")
+            # More precise strategy: Find the row containing the label, then get td siblings
+            # Look for Temperature row
+            temp_row = doc.xpath('//tr[.//span[contains(text(), "Temperature")] or .//*[contains(text(), "Temperature")]]')
+            print(f"DEBUG: Found {len(temp_row)} temperature rows")
 
-            # Strategy 2: Try looking in the entire document for Temperature labels
-            if len(temp_elements) < 2:
-                temp_elements = doc.xpath('//*[contains(text(), "Temperature")]/following::*//td')
-                print(f"DEBUG: Found {len(temp_elements)} temperature td elements (strategy 2)")
+            if temp_row:
+                # Get all td elements in this row
+                temp_tds = temp_row[0].xpath('.//td')
+                print(f"DEBUG: Found {len(temp_tds)} td elements in temperature row")
 
-            # Strategy 3: Look for the summary section specifically
-            if len(temp_elements) < 2:
-                # Try to find summary container
-                summary_container = doc.xpath('//*[contains(@class, "summary") or contains(text(), "Summary")]')
-                print(f"DEBUG: Found {len(summary_container)} summary containers")
-                if summary_container:
-                    temp_elements = summary_container[0].xpath('.//tr[contains(., "Temperature")]//td')
-                    print(f"DEBUG: Found {len(temp_elements)} temperature td elements in summary (strategy 3)")
+                if len(temp_tds) >= 3:  # Should have: label, high, low, average
+                    high_temp_text = temp_tds[1].text_content().strip()  # Index 1 is "High"
+                    low_temp_text = temp_tds[2].text_content().strip()   # Index 2 is "Low"
+                    print(f"DEBUG: Temperature texts: High='{high_temp_text}', Low='{low_temp_text}'")
 
-            if len(temp_elements) >= 2:
-                high_temp_text = temp_elements[0].text_content().strip()
-                low_temp_text = temp_elements[1].text_content().strip()
-                print(f"DEBUG: Temperature texts: High='{high_temp_text}', Low='{low_temp_text}'")
+                    high_match = re.search(r'([\d.]+)', high_temp_text)
+                    low_match = re.search(r'([\d.]+)', low_temp_text)
 
-                # Extract numeric value (remove °F, °C, etc.)
-                high_match = re.search(r'([\d.]+)', high_temp_text)
-                low_match = re.search(r'([\d.]+)', low_temp_text)
+                    if high_match:
+                        summary_data["MaxTemp"] = float(high_match.group(1))
+                        print(f"DEBUG: MaxTemp = {summary_data['MaxTemp']}")
+                    if low_match:
+                        summary_data["MinTemp"] = float(low_match.group(1))
+                        print(f"DEBUG: MinTemp = {summary_data['MinTemp']}")
 
-                if high_match:
-                    summary_data["MaxTemp"] = float(high_match.group(1))
-                    print(f"DEBUG: MaxTemp = {summary_data['MaxTemp']}")
-                if low_match:
-                    summary_data["MinTemp"] = float(low_match.group(1))
-                    print(f"DEBUG: MinTemp = {summary_data['MinTemp']}")
+            # Look for Wind Gust row
+            gust_row = doc.xpath('//tr[.//span[contains(text(), "Wind Gust")] or .//*[contains(text(), "Wind Gust")]]')
+            print(f"DEBUG: Found {len(gust_row)} wind gust rows")
 
-            # Try to find Wind Gust High
-            gust_elements = doc.xpath('//span[contains(text(), "Wind Gust")]/ancestor::tr[1]//td')
-            print(f"DEBUG: Found {len(gust_elements)} wind gust td elements")
+            if gust_row:
+                gust_tds = gust_row[0].xpath('.//td')
+                print(f"DEBUG: Found {len(gust_tds)} td elements in wind gust row")
 
-            if len(gust_elements) < 1:
-                gust_elements = doc.xpath('//*[contains(text(), "Wind Gust")]/following::*//td')
-                print(f"DEBUG: Found {len(gust_elements)} wind gust td elements (strategy 2)")
+                if len(gust_tds) >= 2:  # Should have: label, high, ...
+                    high_gust_text = gust_tds[1].text_content().strip()  # Index 1 is "High"
+                    print(f"DEBUG: Wind Gust text: '{high_gust_text}'")
 
-            if len(gust_elements) >= 1:
-                high_gust_text = gust_elements[0].text_content().strip()
-                print(f"DEBUG: Wind Gust text: '{high_gust_text}'")
-                gust_match = re.search(r'([\d.]+)', high_gust_text)
-                if gust_match:
-                    summary_data["MaxGust"] = float(gust_match.group(1))
-                    print(f"DEBUG: MaxGust = {summary_data['MaxGust']}")
+                    gust_match = re.search(r'([\d.]+)', high_gust_text)
+                    if gust_match:
+                        summary_data["MaxGust"] = float(gust_match.group(1))
+                        print(f"DEBUG: MaxGust = {summary_data['MaxGust']}")
+                    else:
+                        print(f"DEBUG: No numeric value found in wind gust (probably '--')")
 
-            # Try to find Precipitation High
-            precip_elements = doc.xpath('//span[contains(text(), "Precipitation")]/ancestor::tr[1]//td')
-            print(f"DEBUG: Found {len(precip_elements)} precipitation td elements")
+            # Look for Precipitation row
+            precip_row = doc.xpath('//tr[.//span[contains(text(), "Precipitation")] or .//*[contains(text(), "Precipitation")]]')
+            print(f"DEBUG: Found {len(precip_row)} precipitation rows")
 
-            if len(precip_elements) < 1:
-                precip_elements = doc.xpath('//*[contains(text(), "Precipitation")]/following::*//td')
-                print(f"DEBUG: Found {len(precip_elements)} precipitation td elements (strategy 2)")
+            if precip_row:
+                precip_tds = precip_row[0].xpath('.//td')
+                print(f"DEBUG: Found {len(precip_tds)} td elements in precipitation row")
 
-            if len(precip_elements) >= 1:
-                high_precip_text = precip_elements[0].text_content().strip()
-                print(f"DEBUG: Precipitation text: '{high_precip_text}'")
-                precip_match = re.search(r'([\d.]+)', high_precip_text)
-                if precip_match:
-                    summary_data["SumPrec"] = float(precip_match.group(1))
-                    print(f"DEBUG: SumPrec = {summary_data['SumPrec']}")
+                if len(precip_tds) >= 2:  # Should have: label, high, ...
+                    high_precip_text = precip_tds[1].text_content().strip()  # Index 1 is "High"
+                    print(f"DEBUG: Precipitation text: '{high_precip_text}'")
+
+                    precip_match = re.search(r'([\d.]+)', high_precip_text)
+                    if precip_match:
+                        summary_data["SumPrec"] = float(precip_match.group(1))
+                        print(f"DEBUG: SumPrec = {summary_data['SumPrec']}")
+                    else:
+                        print(f"DEBUG: No numeric value found in precipitation (probably '--')")
 
         except Exception as e:
             print(f"Error parsing summary table: {e}")
