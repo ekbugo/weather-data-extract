@@ -35,6 +35,10 @@ class Parser:
                 temp_tds = temp_row[0].xpath('.//td')
                 print(f"DEBUG: Found {len(temp_tds)} td elements in temperature row")
 
+                # Debug: print all td values to see the structure
+                for i, td in enumerate(temp_tds):
+                    print(f"DEBUG:   td[{i}] = '{td.text_content().strip()}'")
+
                 if len(temp_tds) >= 3:  # Should have: label, high, low, average
                     high_temp_text = temp_tds[1].text_content().strip()  # Index 1 is "High"
                     low_temp_text = temp_tds[2].text_content().strip()   # Index 2 is "Low"
