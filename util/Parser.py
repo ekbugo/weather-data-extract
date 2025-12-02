@@ -39,11 +39,11 @@ class Parser:
                 for i, td in enumerate(temp_tds):
                     print(f"DEBUG:   td[{i}] = '{td.text_content().strip()}'")
 
-                if len(temp_tds) >= 3:  # Should have: label, low, high, average (or high, low, average)
-                    # Extract both values
-                    val1_text = temp_tds[1].text_content().strip()
-                    val2_text = temp_tds[2].text_content().strip()
-                    print(f"DEBUG: Temperature column values: td[1]='{val1_text}', td[2]='{val2_text}'")
+                if len(temp_tds) >= 2:  # Should have: high, low, average
+                    # Extract values from td[0] (high) and td[1] (low)
+                    val1_text = temp_tds[0].text_content().strip()  # td[0] is High
+                    val2_text = temp_tds[1].text_content().strip()  # td[1] is Low
+                    print(f"DEBUG: Temperature column values: td[0]='{val1_text}', td[1]='{val2_text}'")
 
                     val1_match = re.search(r'([\d.]+)', val1_text)
                     val2_match = re.search(r'([\d.]+)', val2_text)
@@ -70,8 +70,8 @@ class Parser:
                 gust_tds = gust_row[0].xpath('.//td')
                 print(f"DEBUG: Found {len(gust_tds)} td elements in wind gust row")
 
-                if len(gust_tds) >= 2:  # Should have: label, high, ...
-                    high_gust_text = gust_tds[1].text_content().strip()  # Index 1 is "High"
+                if len(gust_tds) >= 1:  # Should have: high, low, average (or just high)
+                    high_gust_text = gust_tds[0].text_content().strip()  # Index 0 is "High"
                     print(f"DEBUG: Wind Gust text: '{high_gust_text}'")
 
                     gust_match = re.search(r'([\d.]+)', high_gust_text)
@@ -89,8 +89,8 @@ class Parser:
                 precip_tds = precip_row[0].xpath('.//td')
                 print(f"DEBUG: Found {len(precip_tds)} td elements in precipitation row")
 
-                if len(precip_tds) >= 2:  # Should have: label, high, ...
-                    high_precip_text = precip_tds[1].text_content().strip()  # Index 1 is "High"
+                if len(precip_tds) >= 1:  # Should have: high, low, average (or just high)
+                    high_precip_text = precip_tds[0].text_content().strip()  # Index 0 is "High"
                     print(f"DEBUG: Precipitation text: '{high_precip_text}'")
 
                     precip_match = re.search(r'([\d.]+)', high_precip_text)
