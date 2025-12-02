@@ -35,20 +35,32 @@ class Parser:
                 temp_tds = temp_row[0].xpath('.//td')
                 print(f"DEBUG: Found {len(temp_tds)} td elements in temperature row")
 
-                if len(temp_tds) >= 3:  # Should have: label, high, low, average
-                    high_temp_text = temp_tds[1].text_content().strip()  # Index 1 is "High"
-                    low_temp_text = temp_tds[2].text_content().strip()   # Index 2 is "Low"
-                    print(f"DEBUG: Temperature texts: High='{high_temp_text}', Low='{low_temp_text}'")
+                # Debug: print all td values to see the structure
+                for i, td in enumerate(temp_tds):
+                    print(f"DEBUG:   td[{i}] = '{td.text_content().strip()}'")
 
-                    high_match = re.search(r'([\d.]+)', high_temp_text)
-                    low_match = re.search(r'([\d.]+)', low_temp_text)
+                if len(temp_tds) >= 3:  # Should have: label, low, high, average (or high, low, average)
+                    # Extract both values
+                    val1_text = temp_tds[1].text_content().strip()
+                    val2_text = temp_tds[2].text_content().strip()
+                    print(f"DEBUG: Temperature column values: td[1]='{val1_text}', td[2]='{val2_text}'")
 
-                    if high_match:
-                        summary_data["MaxTemp"] = float(high_match.group(1))
-                        print(f"DEBUG: MaxTemp = {summary_data['MaxTemp']}")
-                    if low_match:
-                        summary_data["MinTemp"] = float(low_match.group(1))
-                        print(f"DEBUG: MinTemp = {summary_data['MinTemp']}")
+                    val1_match = re.search(r'([\d.]+)', val1_text)
+                    val2_match = re.search(r'([\d.]+)', val2_text)
+
+                    if val1_match and val2_match:
+                        val1 = float(val1_match.group(1))
+                        val2 = float(val2_match.group(1))
+
+                        # Determine which is high and which is low
+                        if val1 > val2:
+                            summary_data["MaxTemp"] = val1
+                            summary_data["MinTemp"] = val2
+                        else:
+                            summary_data["MaxTemp"] = val2
+                            summary_data["MinTemp"] = val1
+
+                        print(f"DEBUG: MaxTemp = {summary_data['MaxTemp']}, MinTemp = {summary_data['MinTemp']}")
 
             # Look for Wind Gust row
             gust_row = doc.xpath('//tr[.//span[contains(text(), "Wind Gust")] or .//*[contains(text(), "Wind Gust")]]')
