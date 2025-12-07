@@ -4,6 +4,7 @@
 import requests
 import csv
 import lxml.html as lh
+import os
 
 import config
 
@@ -11,6 +12,7 @@ from util.UnitConverter import ConvertToSystem
 from util.Parser import Parser
 from util.Utils import Utils
 from util.JsonExtractor import JsonExtractor
+from util.GitHelper import GitHelper
 
 # configuration
 stations_file = open('stations.txt', 'r')
@@ -23,6 +25,8 @@ END_DATE = config.END_DATE
 UNIT_SYSTEM = config.UNIT_SYSTEM
 # find the first data entry automatically
 FIND_FIRST_DATE = config.FIND_FIRST_DATE
+# output directory for JSON files
+OUTPUT_DIR = config.OUTPUT_DIR
 
 
 def scrap_station(weather_station_url):
@@ -110,11 +114,36 @@ def scrap_station(weather_station_url):
 
     # Save aggregated summary statistics to JSON
     print(f'Saving summary statistics to JSON for {station_name}')
-    JsonExtractor.save_summary_to_json(aggregated_summary, station_name, END_DATE)
+    json_file = JsonExtractor.save_summary_to_json(aggregated_summary, station_name, END_DATE, OUTPUT_DIR)
+    return json_file
 
 
+# Track created JSON files for git commit
+created_json_files = []
 
 for url in URLS:
     url = url.strip()
     print(url)
-    scrap_station(url)
+    json_file = scrap_station(url)
+    if json_file:
+        # Get just the filename (not the full path) for git add
+        json_filename = os.path.basename(json_file)
+        created_json_files.append(os.path.join('backend', 'data', json_filename))
+
+# After all scraping is done, commit and push to weather-game repo
+if created_json_files:
+    print("\n" + "="*80)
+    print("Committing and pushing to weather-game repository...")
+    print("="*80)
+
+    # Get the weather-game repo path (one level up from current dir, then weather-game)
+    weather_game_repo = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'weather-game')
+
+    success = GitHelper.commit_and_push(weather_game_repo, created_json_files, END_DATE)
+
+    if success:
+        print("\n✓ Successfully committed and pushed weather data!")
+    else:
+        print("\n✗ Failed to commit and push weather data. Please check errors above.")
+else:
+    print("\nNo JSON files were created.")
