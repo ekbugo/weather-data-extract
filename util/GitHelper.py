@@ -41,22 +41,28 @@ class GitHelper:
 
             print(f"Committing to repository: {repo_path}")
 
-            # Add files
+            # Stage all changes in backend/data directory (including deletions)
+            # This handles both new files and deleted old files
+            data_dir_result = subprocess.run(
+                ['git', 'add', '-A', 'backend/data'],
+                cwd=repo_path,
+                capture_output=True,
+                text=True
+            )
+
+            if data_dir_result.returncode != 0:
+                print(f"Error staging backend/data directory: {data_dir_result.stderr}")
+                return False
+
+            print(f"Staged all changes in backend/data/ (including additions and deletions)")
+
+            # Verify new files exist
             for file in files_to_add:
                 file_path = os.path.join(repo_path, file)
                 if os.path.exists(file_path):
-                    result = subprocess.run(
-                        ['git', 'add', file],
-                        cwd=repo_path,
-                        capture_output=True,
-                        text=True
-                    )
-                    if result.returncode != 0:
-                        print(f"Error adding file {file}: {result.stderr}")
-                        return False
-                    print(f"Added: {file}")
+                    print(f"  Added: {file}")
                 else:
-                    print(f"Warning: File does not exist: {file_path}")
+                    print(f"  Warning: File does not exist: {file_path}")
 
             # Check if there are changes to commit
             status_result = subprocess.run(
