@@ -93,7 +93,26 @@ class GitHelper:
 
             print(f"Committed: {commit_message}")
 
+            # Pull before pushing to sync with remote
+            print("Pulling latest changes from remote...")
+            pull_result = subprocess.run(
+                ['git', 'pull', '--rebase'],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if pull_result.returncode != 0:
+                print(f"Warning: Pull had issues:")
+                print(f"  stderr: {pull_result.stderr}")
+                print(f"  stdout: {pull_result.stdout}")
+                print("  Attempting to push anyway...")
+            else:
+                print("Pulled latest changes successfully")
+
             # Push
+            print("Pushing to remote...")
             push_result = subprocess.run(
                 ['git', 'push'],
                 cwd=repo_path,
