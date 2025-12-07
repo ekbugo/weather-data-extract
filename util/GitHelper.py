@@ -79,7 +79,10 @@ class GitHelper:
             )
 
             if commit_result.returncode != 0:
-                print(f"Error committing: {commit_result.stderr}")
+                print(f"Error committing:")
+                print(f"  Return code: {commit_result.returncode}")
+                print(f"  stderr: {commit_result.stderr}")
+                print(f"  stdout: {commit_result.stdout}")
                 return False
 
             print(f"Committed: {commit_message}")
