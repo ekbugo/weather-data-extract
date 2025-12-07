@@ -64,34 +64,35 @@ class GitHelper:
                 else:
                     print(f"  Warning: File does not exist: {file_path}")
 
-            # Check if there are changes to commit
+            # Check if there are changes to commit in backend/data
             status_result = subprocess.run(
-                ['git', 'status', '--porcelain'],
+                ['git', 'status', '--porcelain', 'backend/data'],
                 cwd=repo_path,
                 capture_output=True,
                 text=True
             )
 
-            if not status_result.stdout.strip():
-                print("No changes to commit")
-                return True
+            changes_to_commit = status_result.stdout.strip()
 
-            # Commit
-            commit_result = subprocess.run(
-                ['git', 'commit', '-m', commit_message],
-                cwd=repo_path,
-                capture_output=True,
-                text=True
-            )
+            if changes_to_commit:
+                # There are changes - commit them
+                commit_result = subprocess.run(
+                    ['git', 'commit', '-m', commit_message],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True
+                )
 
-            if commit_result.returncode != 0:
-                print(f"Error committing:")
-                print(f"  Return code: {commit_result.returncode}")
-                print(f"  stderr: {commit_result.stderr}")
-                print(f"  stdout: {commit_result.stdout}")
-                return False
+                if commit_result.returncode != 0:
+                    print(f"Error committing:")
+                    print(f"  Return code: {commit_result.returncode}")
+                    print(f"  stderr: {commit_result.stderr}")
+                    print(f"  stdout: {commit_result.stdout}")
+                    return False
 
-            print(f"Committed: {commit_message}")
+                print(f"Committed: {commit_message}")
+            else:
+                print("No new changes to commit (files already committed)")
 
             # Pull before pushing to sync with remote
             print("Pulling latest changes from remote...")
