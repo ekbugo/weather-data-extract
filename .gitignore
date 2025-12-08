@@ -17,3 +17,7 @@ ENV/
 
 # JSON output files (generated data)
 *.json
+
+# Log files
+logs/
+*.log

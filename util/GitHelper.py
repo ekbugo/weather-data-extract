@@ -1,0 +1,137 @@
+import subprocess
+import os
+from datetime import date
+
+
+class GitHelper:
+    """Helper class for automating git operations on the weather-game repository"""
+
+    @staticmethod
+    def commit_and_push(repo_path, files_to_add, commit_date):
+        """
+        Commits and pushes files to the specified git repository.
+
+        Args:
+            repo_path: Path to the git repository
+            files_to_add: List of file paths (relative to repo) to add
+            commit_date: Date object or string for the commit message
+
+        Returns:
+            True if successful, False otherwise
+        """
+        # Convert date to string if needed
+        if isinstance(commit_date, date):
+            date_str = commit_date.strftime('%Y-%m-%d')
+        else:
+            date_str = str(commit_date)
+
+        commit_message = f"Add data for {date_str}"
+
+        try:
+            # Check if the repo path exists
+            if not os.path.exists(repo_path):
+                print(f"Error: Repository path does not exist: {repo_path}")
+                return False
+
+            # Check if it's a git repository
+            git_dir = os.path.join(repo_path, '.git')
+            if not os.path.exists(git_dir):
+                print(f"Error: Not a git repository: {repo_path}")
+                return False
+
+            print(f"Committing to repository: {repo_path}")
+
+            # Stage all changes in backend/data directory (including deletions)
+            # This handles both new files and deleted old files
+            data_dir_result = subprocess.run(
+                ['git', 'add', '-A', 'backend/data'],
+                cwd=repo_path,
+                capture_output=True,
+                text=True
+            )
+
+            if data_dir_result.returncode != 0:
+                print(f"Error staging backend/data directory: {data_dir_result.stderr}")
+                return False
+
+            print(f"Staged all changes in backend/data/ (including additions and deletions)")
+
+            # Verify new files exist
+            for file in files_to_add:
+                file_path = os.path.join(repo_path, file)
+                if os.path.exists(file_path):
+                    print(f"  Added: {file}")
+                else:
+                    print(f"  Warning: File does not exist: {file_path}")
+
+            # Check if there are changes to commit in backend/data
+            status_result = subprocess.run(
+                ['git', 'status', '--porcelain', 'backend/data'],
+                cwd=repo_path,
+                capture_output=True,
+                text=True
+            )
+
+            changes_to_commit = status_result.stdout.strip()
+
+            if changes_to_commit:
+                # There are changes - commit them
+                commit_result = subprocess.run(
+                    ['git', 'commit', '-m', commit_message],
+                    cwd=repo_path,
+                    capture_output=True,
+                    text=True
+                )
+
+                if commit_result.returncode != 0:
+                    print(f"Error committing:")
+                    print(f"  Return code: {commit_result.returncode}")
+                    print(f"  stderr: {commit_result.stderr}")
+                    print(f"  stdout: {commit_result.stdout}")
+                    return False
+
+                print(f"Committed: {commit_message}")
+            else:
+                print("No new changes to commit (files already committed)")
+
+            # Pull before pushing to sync with remote
+            print("Pulling latest changes from remote...")
+            pull_result = subprocess.run(
+                ['git', 'pull', '--rebase'],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if pull_result.returncode != 0:
+                print(f"Warning: Pull had issues:")
+                print(f"  stderr: {pull_result.stderr}")
+                print(f"  stdout: {pull_result.stdout}")
+                print("  Attempting to push anyway...")
+            else:
+                print("Pulled latest changes successfully")
+
+            # Push
+            print("Pushing to remote...")
+            push_result = subprocess.run(
+                ['git', 'push'],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+
+            if push_result.returncode != 0:
+                print(f"Error pushing: {push_result.stderr}")
+                return False
+
+            print("Pushed to remote successfully")
+            return True
+
+        except subprocess.TimeoutExpired:
+            print("Error: Git push timed out")
+            return False
+        except Exception as e:
+            print(f"Error during git operations: {e}")
+            return False

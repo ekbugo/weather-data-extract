@@ -2,15 +2,15 @@
 # Contact me on Telegram: @karlpy
 
 import requests
-import csv
 import lxml.html as lh
+import os
 
 import config
 
-from util.UnitConverter import ConvertToSystem
 from util.Parser import Parser
 from util.Utils import Utils
 from util.JsonExtractor import JsonExtractor
+from util.GitHelper import GitHelper
 
 # configuration
 stations_file = open('stations.txt', 'r')
@@ -18,20 +18,21 @@ URLS = stations_file.readlines()
 # Date format: YYYY-MM-DD
 START_DATE = config.START_DATE
 END_DATE = config.END_DATE
-
-# set to "metric" or "imperial"
-UNIT_SYSTEM = config.UNIT_SYSTEM
 # find the first data entry automatically
 FIND_FIRST_DATE = config.FIND_FIRST_DATE
+# output directory for JSON files
+OUTPUT_DIR = config.OUTPUT_DIR
 
 
 def scrap_station(weather_station_url):
-
+    """
+    Scrapes weather summary statistics from a weather station URL.
+    Extracts data directly from webpage summary tables and saves to JSON.
+    """
     session = requests.Session()
     timeout = 5
     global START_DATE
     global END_DATE
-    global UNIT_SYSTEM
     global FIND_FIRST_DATE
 
     if FIND_FIRST_DATE:
@@ -40,10 +41,9 @@ def scrap_station(weather_station_url):
         # if first date found
         if(first_date_with_data != -1):
             START_DATE = first_date_with_data
-    
+
     url_gen = Utils.date_url_generator(weather_station_url, START_DATE, END_DATE)
     station_name = weather_station_url.split('/')[-1]
-    file_name = f'{station_name}.csv'
 
     # Track summary statistics across all dates
     aggregated_summary = {
@@ -53,68 +53,68 @@ def scrap_station(weather_station_url):
         "SumPrec": None
     }
 
-    with open(file_name, 'a+', newline='') as csvfile:
-        fieldnames = ['Date', 'Time',	'Temperature',	'Dew_Point',	'Humidity',	'Wind',	'Speed',	'Gust',	'Pressure',	'Precip_Rate',	'Precip_Accum',	'UV',   'Solar']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    for date_string, url in url_gen:
+        try:
+            print(f'Scraping data from {url}')
 
-        # Write the correct headers to the CSV file
-        if UNIT_SYSTEM == "metric":
-            # 12:04 AM	24.4 C	18.3 C	69 %	SW	0.0 km/h	0.0 km/h	1,013.88 hPa	0.00 mm	0.00 mm	0	0 w/m²
-            writer.writerow({'Date': 'Date', 'Time': 'Time',	'Temperature': 'Temperature_C',	'Dew_Point': 'Dew_Point_C',	'Humidity': 'Humidity_%',	'Wind': 'Wind',	'Speed': 'Speed_kmh',	'Gust': 'Gust_kmh',	'Pressure': 'Pressure_hPa',	'Precip_Rate': 'Precip_Rate_mm',	'Precip_Accum': 'Precip_Accum_mm',	'UV': 'UV',   'Solar': 'Solar_w/m2'})
-        elif UNIT_SYSTEM == "imperial":
-            # 12:04 AM	75.9 F	65.0 F	69 %	SW	0.0 mph	0.0 mph	29.94 in	0.00 in	0.00 in	0	0 w/m²
-            writer.writerow({'Date': 'Date', 'Time': 'Time',	'Temperature': 'Temperature_F',	'Dew_Point': 'Dew_Point_F',	'Humidity': 'Humidity_%',	'Wind': 'Wind',	'Speed': 'Speed_mph',	'Gust': 'Gust_mph',	'Pressure': 'Pressure_in',	'Precip_Rate': 'Precip_Rate_in',	'Precip_Accum': 'Precip_Accum_in',	'UV': 'UV',   'Solar': 'Solar_w/m2'})
-        else:
-            raise Exception("please set 'unit_system' to either \"metric\" or \"imperial\"! ")
+            # Fetch the webpage
+            html_string = session.get(url, timeout=timeout)
+            doc = lh.fromstring(html_string.content)
 
-        for date_string, url in url_gen:
-            try:
-                print(f'Scraping data from {url}')
-                history_table = False
-                while not history_table:
-                    html_string = session.get(url, timeout=timeout)
-                    doc = lh.fromstring(html_string.content)
-                    history_table = doc.xpath('//*[@id="main-page-content"]/div/div/div/lib-history/div[2]/lib-history-table/div/div/div/table/tbody')
-                    if not history_table:
-                        print("refreshing session")
-                        session = requests.Session()
+            # Extract summary statistics from the page
+            daily_summary = Parser.parse_summary_table(doc)
 
-                # Extract summary statistics from the page
-                daily_summary = Parser.parse_summary_table(doc)
+            # Aggregate summary data across all dates
+            if daily_summary["MaxTemp"] is not None:
+                if aggregated_summary["MaxTemp"] is None or daily_summary["MaxTemp"] > aggregated_summary["MaxTemp"]:
+                    aggregated_summary["MaxTemp"] = daily_summary["MaxTemp"]
+            if daily_summary["MinTemp"] is not None:
+                if aggregated_summary["MinTemp"] is None or daily_summary["MinTemp"] < aggregated_summary["MinTemp"]:
+                    aggregated_summary["MinTemp"] = daily_summary["MinTemp"]
+            if daily_summary["MaxGust"] is not None:
+                if aggregated_summary["MaxGust"] is None or daily_summary["MaxGust"] > aggregated_summary["MaxGust"]:
+                    aggregated_summary["MaxGust"] = daily_summary["MaxGust"]
+            if daily_summary["SumPrec"] is not None:
+                if aggregated_summary["SumPrec"] is None or daily_summary["SumPrec"] > aggregated_summary["SumPrec"]:
+                    aggregated_summary["SumPrec"] = daily_summary["SumPrec"]
 
-                # Aggregate summary data across all dates
-                if daily_summary["MaxTemp"] is not None:
-                    if aggregated_summary["MaxTemp"] is None or daily_summary["MaxTemp"] > aggregated_summary["MaxTemp"]:
-                        aggregated_summary["MaxTemp"] = daily_summary["MaxTemp"]
-                if daily_summary["MinTemp"] is not None:
-                    if aggregated_summary["MinTemp"] is None or daily_summary["MinTemp"] < aggregated_summary["MinTemp"]:
-                        aggregated_summary["MinTemp"] = daily_summary["MinTemp"]
-                if daily_summary["MaxGust"] is not None:
-                    if aggregated_summary["MaxGust"] is None or daily_summary["MaxGust"] > aggregated_summary["MaxGust"]:
-                        aggregated_summary["MaxGust"] = daily_summary["MaxGust"]
-                if daily_summary["SumPrec"] is not None:
-                    if aggregated_summary["SumPrec"] is None or daily_summary["SumPrec"] > aggregated_summary["SumPrec"]:
-                        aggregated_summary["SumPrec"] = daily_summary["SumPrec"]
+            print(f'Extracted summary: MaxTemp={daily_summary["MaxTemp"]}, MinTemp={daily_summary["MinTemp"]}, MaxGust={daily_summary["MaxGust"]}, SumPrec={daily_summary["SumPrec"]}')
 
-                # parse html table rows
-                data_rows = Parser.parse_html_table(date_string, history_table)
-
-                # convert to metric system
-                converter = ConvertToSystem(UNIT_SYSTEM)
-                data_to_write = converter.clean_and_convert(data_rows)
-                    
-                print(f'Saving {len(data_to_write)} rows')
-                writer.writerows(data_to_write)
-            except Exception as e:
-                print(e)
+        except Exception as e:
+            print(f'Error scraping {url}: {e}')
 
     # Save aggregated summary statistics to JSON
     print(f'Saving summary statistics to JSON for {station_name}')
-    JsonExtractor.save_summary_to_json(aggregated_summary, station_name, END_DATE)
+    json_file = JsonExtractor.save_summary_to_json(aggregated_summary, station_name, END_DATE, OUTPUT_DIR)
+    return json_file
 
 
+# Track created JSON files for git commit
+created_json_files = []
 
 for url in URLS:
     url = url.strip()
     print(url)
-    scrap_station(url)
+    json_file = scrap_station(url)
+    if json_file:
+        # Get just the filename (not the full path) for git add
+        json_filename = os.path.basename(json_file)
+        created_json_files.append(os.path.join('backend', 'data', json_filename))
+
+# After all scraping is done, commit and push to weather-game repo
+if created_json_files:
+    print("\n" + "="*80)
+    print("Committing and pushing to weather-game repository...")
+    print("="*80)
+
+    # Get the weather-game repo path (one level up from current dir, then weather-game)
+    weather_game_repo = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'weather-game')
+
+    success = GitHelper.commit_and_push(weather_game_repo, created_json_files, END_DATE)
+
+    if success:
+        print("\n✓ Successfully committed and pushed weather data!")
+    else:
+        print("\n✗ Failed to commit and push weather data. Please check errors above.")
+else:
+    print("\nNo JSON files were created.")
