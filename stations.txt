@@ -1,9 +1,9 @@
 https://www.wunderground.com/dashboard/pws/IAGUAD73
-https://www.wunderground.com/dashboard/pws/IMAYAG30
-https://www.wunderground.com/dashboard/pws/ICABOR73
-https://www.wunderground.com/dashboard/pws/ICAYEY43
 https://www.wunderground.com/dashboard/pws/IARECI36
-https://www.wunderground.com/dashboard/pws/IMARIC13
 https://www.wunderground.com/dashboard/pws/IVEGAB17
 https://www.wunderground.com/dashboard/pws/ICULEB6
+https://www.wunderground.com/dashboard/pws/ICAYEY43
 https://www.wunderground.com/dashboard/pws/IPONCE128
+https://www.wunderground.com/dashboard/pws/IMARIC13
+https://www.wunderground.com/dashboard/pws/ICABOR73
+https://www.wunderground.com/dashboard/pws/IMAYAG30
