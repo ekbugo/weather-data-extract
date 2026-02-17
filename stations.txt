@@ -7,3 +7,5 @@ https://www.wunderground.com/dashboard/pws/IPONCE128
 https://www.wunderground.com/dashboard/pws/IMARIC13
 https://www.wunderground.com/dashboard/pws/ICABOR73
 https://www.wunderground.com/dashboard/pws/IMAYAG30
+https://www.wunderground.com/dashboard/pws/ICAROL53
+https://www.wunderground.com/dashboard/pws/IMARIC10
